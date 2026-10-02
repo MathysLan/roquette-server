@@ -1,0 +1,14 @@
+{
+  "name": "roquette-server",
+  "version": "0.2.0",
+  "description": "Serveur arbitre du jeu de mots à la roquette (portfolio Mathys Langiny). Nom provisoire.",
+  "private": true,
+  "main": "server.js",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-avatar.js && node test-engine.mjs && node test-dico.mjs && node test.js && node test-16.js && node test-depart.js && node test-avatar-ws.js && node test-presence.js"
+  },
+  "dependencies": { "ws": "^8.18.0" },
+  "license": "MIT"
+}

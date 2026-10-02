@@ -1,0 +1,9 @@
+# Déploiement Render, même forme que les autres serveurs du portfolio.
+services:
+  - type: web
+    name: roquette-server
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
