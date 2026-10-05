@@ -4,7 +4,7 @@
 //
 //   node test-skin.js      (le serveur est démarré dans ce même processus)
 //
-// Le contrat : un id FERMÉ par joueur (`roquette` par défaut, `petoire`), dans
+// Le contrat : un id FERMÉ par joueur (`roquette` par défaut, `petoire`, `marmite`), dans
 // `join`, dans les joueurs de `lobby` et de `countdown`, et l'action `skin` au
 // salon seulement, relayée en { type: 'skin', id, skin }. Tout le reste —
 // absent, invalide, identique, hors salon, débit dépassé — ne produit RIEN :
@@ -85,18 +85,19 @@ function bot(c) {
   O.motsPour('ion');                   // indexe le dictionnaire AVANT la partie (sinon le bot rate son tour)
 
   // ═══ 0. le contrat lui-même
-  t('liste fermée : roquette et petoire, rien d autre ; défaut roquette',
-    same([...SKINS].sort(), ['petoire', 'roquette']) && SKIN_DEFAULT === 'roquette');
-  t('cleanSkin : petoire passe, tout le reste devient roquette',
-    cleanSkin('petoire') === 'petoire' && cleanSkin('roquette') === 'roquette'
-    && [undefined, null, 42, {}, ['petoire'], 'marmite', 'Petoire', ' petoire', SVG, ENORME].every((v) => cleanSkin(v) === 'roquette'));
+  t('liste fermée : roquette, petoire et marmite, rien d autre ; défaut roquette',
+    same([...SKINS].sort(), ['marmite', 'petoire', 'roquette']) && SKIN_DEFAULT === 'roquette');
+  t('cleanSkin : petoire et marmite passent, tout le reste devient roquette',
+    cleanSkin('petoire') === 'petoire' && cleanSkin('marmite') === 'marmite' && cleanSkin('roquette') === 'roquette'
+    && [undefined, null, 42, {}, ['petoire'], 'disrupteur', 'Marmite', ' marmite', 'Petoire', ' petoire', SVG, ENORME].every((v) => cleanSkin(v) === 'roquette'));
 
   // ═══ 1. le join : chaque cas crée sa propre room
   const CAS = [
     ['join sans skin → roquette', {}, 'roquette'],
     ['join avec petoire → petoire', { skin: 'petoire' }, 'petoire'],
     ['join avec roquette → roquette', { skin: 'roquette' }, 'roquette'],
-    ['join avec un id inconnu (marmite, pas encore ouvert) → roquette', { skin: 'marmite' }, 'roquette'],
+    ['join avec marmite → marmite', { skin: 'marmite' }, 'marmite'],
+    ['join avec un id inconnu (disrupteur, pas encore ouvert) → roquette', { skin: 'disrupteur' }, 'roquette'],
     ['join avec une autre casse (Petoire) → roquette', { skin: 'Petoire' }, 'roquette'],
     ['join avec des espaces autour ( petoire ) → roquette', { skin: ' petoire ' }, 'roquette'],
     ['join avec un nombre → roquette', { skin: 42 }, 'roquette'],
@@ -146,12 +147,18 @@ function bot(c) {
     recus.every((l) => l.length === 1 && same(l[0], { type: 'skin', id: b.id, skin: 'petoire' })), JSON.stringify(recus));
   t('… et l état du serveur suit', etat(b).skin === 'petoire');
   t('… l ancien client le reçoit sans dommage (aucune erreur)', !c.msgs.some((m) => m.type === 'error' && m.message !== 'action inconnue'));
+  recus = await apres(table, b, [{ action: 'skin', skin: 'marmite' }]);
+  t('changement vers marmite : relayé chez les trois, état à marmite',
+    recus.every((l) => l.length === 1 && same(l[0], { type: 'skin', id: b.id, skin: 'marmite' })) && etat(b).skin === 'marmite', JSON.stringify(recus));
+  recus = await apres(table, b, [{ action: 'skin', skin: 'petoire' }]);
+  t('… et retour à petoire', recus.every((l) => l.length === 1 && l[0].skin === 'petoire') && etat(b).skin === 'petoire');
+  await new Promise((r) => setTimeout(r, 1100));   // sort de la fenêtre de débit (4 par seconde) avant la suite
 
   recus = await apres(table, b, [{ action: 'skin', skin: 'petoire' }]);
   t('changement identique : aucune diffusion', rien(recus), JSON.stringify(recus));
 
   recus = await apres(table, b, [
-    { action: 'skin', skin: 'marmite' }, { action: 'skin', skin: SVG }, { action: 'skin', skin: ARBITRAIRE },
+    { action: 'skin', skin: 'disrupteur' }, { action: 'skin', skin: SVG }, { action: 'skin', skin: ARBITRAIRE },
     { action: 'skin', skin: 42 }, { action: 'skin', skin: { id: 'roquette' } }, { action: 'skin' },
     { action: 'skin', skin: null }, { action: 'skin', skin: ' roquette' }, { action: 'skin', skin: ENORME },
   ]);
