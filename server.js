@@ -29,6 +29,19 @@ const presenceJoueurs = require('./presence.js');
 
 const PORT = process.env.PORT || 8094;
 const AVATAR_DEFAUT = '🙂';
+
+// Le skin d'arme : purement cosmétique, un id FERMÉ par joueur. Le client
+// dessine ; le serveur ne fait que filtrer et relayer l'id — jamais la valeur
+// reçue. Absent, invalide ou mal formé : le défaut, sans jamais refuser un join.
+// Un id s'ajoute ici AVANT que le front sache le dessiner (serveur d'abord).
+const SKINS = new Set(['roquette', 'petoire']);
+const SKIN_DEFAULT = 'roquette';
+function cleanSkin(value) {
+  return typeof value === 'string' && SKINS.has(value)
+    ? value
+    : SKIN_DEFAULT;
+}
+
 const { dico, prompts } = charger();
 
 // Délais raccourcis : POUR LES TESTS SEULEMENT (personne ne pose ces variables
@@ -42,7 +55,8 @@ const REGLES = {
 
 // Débit par connexion, sur une fenêtre d'une seconde. Au-delà : le mot est
 // refusé (TOO_FAST), la saisie est ignorée, le reste aussi.
-const DEBIT = { tout: 60, submit: 10, typing: 20 };
+// `skin` : les changements EFFECTIFS seulement (chacun est diffusé à la room).
+const DEBIT = { tout: 60, submit: 10, typing: 20, skin: 4 };
 
 // Les refus qui concernent le MOT sont montrés à toute la table (« Bob :
 // « zion » ✗ pas dans le dictionnaire ») ; les autres ne regardent que
@@ -69,13 +83,16 @@ const broadcast = (room, obj, sauf) => room.players.forEach((p) => { if (p !== s
 function etatJoueurs(room) {
   return E.view(room.game).players.map((v) => ({ id: v.id, lives: v.lives, out: v.out, left: v.left, rank: v.rank, words: v.words }));
 }
-// Au lancement : l'état ET l'identité (nom, avatar, hôte), une fois.
+// Au lancement : l'état ET l'identité (nom, avatar, skin, hôte), une fois.
 function joueursComplets(room) {
-  return etatJoueurs(room).map((p) => ({ ...p, name: room.roster.get(p.id).name, avatar: room.roster.get(p.id).avatar, host: p.id === room.hostId }));
+  return etatJoueurs(room).map((p) => {
+    const r = room.roster.get(p.id);
+    return { ...p, name: r.name, avatar: r.avatar, skin: r.skin, host: p.id === room.hostId };
+  });
 }
 
 function lobbyState(room) {
-  return { type: 'lobby', code: room.code, phase: room.phase, max: E.MAX_PLAYERS, players: room.players.map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, host: p.id === room.hostId })) };
+  return { type: 'lobby', code: room.code, phase: room.phase, max: E.MAX_PLAYERS, players: room.players.map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, skin: p.skin, host: p.id === room.hostId })) };
 }
 
 // Les événements du moteur → les messages. Rien n'est inventé ici.
@@ -141,7 +158,9 @@ function lancer(room, msg) {
     vies: msg.vies,
     regles: REGLES,
   });
-  room.roster = new Map(room.players.map((p) => [p.id, { name: p.name, avatar: p.avatar }]));
+  // Le roster fige l'identité de la partie, skin compris : il ne change plus
+  // avant la fin (l'action `skin` n'est acceptée qu'au salon).
+  room.roster = new Map(room.players.map((p) => [p.id, { name: p.name, avatar: p.avatar, skin: p.skin }]));
   room.phase = 'playing';
   const g = room.game;
   broadcast(room, {
@@ -198,6 +217,7 @@ wss.on('connection', (ws) => {
       const name = String(msg.name || '').trim().slice(0, 16) || 'Joueur';
       // Emoji, ou photo de profil revalidée : voir avatar.js.
       const avatar = cleanAvatar(msg.avatar, AVATAR_DEFAUT);
+      const skin = cleanSkin(msg.skin);     // un ancien client n'en envoie pas : le défaut
       let r;
       if (msg.code) {
         r = rooms.get(String(msg.code).toUpperCase().trim());
@@ -212,12 +232,23 @@ wss.on('connection', (ws) => {
       let id;
       do { id = Math.random().toString(36).slice(2, 9); } while (r.players.some((p) => p.id === id));
       room = r;
-      me = { id, ws, name, avatar };
+      me = { id, ws, name, avatar, skin };
       room.players.push(me);
       if (!room.hostId) room.hostId = me.id;
       send(ws, { type: 'you', id: me.id, code: room.code, host: room.hostId === me.id });
       broadcast(room, lobbyState(room));
       return;
+    }
+
+    // Changer de skin : au salon seulement, et toujours EN SILENCE — hors salon,
+    // avant le join, id invalide, id identique ou débit dépassé, rien ne part
+    // (ni erreur, ni diffusion). Seul l'id nettoyé est relayé.
+    if (msg.action === 'skin') {
+      if (!room || !me || room.phase !== 'lobby') return;
+      if (typeof msg.skin !== 'string' || !SKINS.has(msg.skin) || msg.skin === me.skin) return;
+      if (!debit(ws, 'skin')) return;
+      me.skin = msg.skin;
+      return broadcast(room, { type: 'skin', id: me.id, skin: me.skin });
     }
 
     if (!room || !me) return fail('pas encore dans une partie');
@@ -287,4 +318,4 @@ wss.on('connection', (ws) => {
 
 server.listen(PORT, () => console.log(`roquette-server à l'écoute sur :${PORT} — ${dico.size} mots, ${prompts.length} prompts`));
 
-module.exports = { server, wss, rooms };
+module.exports = { server, wss, rooms, SKINS, SKIN_DEFAULT, cleanSkin };

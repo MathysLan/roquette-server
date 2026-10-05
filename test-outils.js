@@ -100,13 +100,14 @@ const estUnMot = (txt) => { indexer(); return DICO.has(E.cle(txt)); };
 // Chaque type de message a ses champs, et seulement eux. Un champ de plus —
 // « juste pour l'affichage » — c'est typiquement là qu'une échéance finirait
 // par fuiter : le test refuse tout champ inconnu.
-const JOUEUR_SALON = ['id', 'name', 'avatar', 'host'];
+const JOUEUR_SALON = ['id', 'name', 'avatar', 'skin', 'host'];
 const JOUEUR_PARTIE = ['id', 'lives', 'out', 'left', 'rank', 'words'];           // turn, boom, left : l'état seul
-const JOUEUR_COMPLET = ['id', 'name', 'avatar', 'host', 'lives', 'out', 'left', 'rank', 'words']; // countdown : une fois
+const JOUEUR_COMPLET = ['id', 'name', 'avatar', 'skin', 'host', 'lives', 'out', 'left', 'rank', 'words']; // countdown : une fois
 const CHAMPS = {
   presence: ['type', 'n', 'cle', 'remplace'],
   you: ['type', 'id', 'code', 'host'],
   lobby: ['type', 'code', 'phase', 'max', 'players'],
+  skin: ['type', 'id', 'skin'],
   countdown: ['type', 'order', 'rythme', 'vies', 'seconds', 'players'],
   turn: ['type', 'turnId', 'holder', 'prompt', 'players'],
   typing: ['type', 'id', 'turnId', 'text'],
@@ -153,6 +154,9 @@ function inspecterFil(msgs, secrets = []) {
     (m.players || []).forEach((p) => { verifierObjet(p, joueurs, ou + ' joueur'); if (p.avatar) verifierObjet(p.avatar, AVATAR, ou + ' avatar'); });
     (m.ranking || []).forEach((p) => { verifierObjet(p, CLASSEMENT, ou + ' classement'); if (p.avatar) verifierObjet(p.avatar, AVATAR, ou + ' avatar'); });
     for (const k of toutesLesCles(m)) if (CLES_INTERDITES.test(k)) ecarts.push(`${ou} : champ interdit « ${k} »`);
+    // Un skin est un id court en minuscules (liste fermée côté serveur), jamais
+    // une valeur relayée telle quelle depuis un client.
+    for (const s of [m, ...(m.players || [])]) if ('skin' in s && !/^[a-z]{1,16}$/.test(s.skin)) ecarts.push(`${ou} : skin mal formé « ${String(s.skin).slice(0, 40)} »`);
     nombres(m, 'type', ou);
   });
   return ecarts;

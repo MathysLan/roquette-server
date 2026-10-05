@@ -50,7 +50,7 @@ async function joindre(avatar, code) {
   t('B voit l avatar de A complet et rien d autre', same(find(b.lobby.players, a.id).avatar, IMG_A));
   const la = await a.wait((m) => m.type === 'lobby' && m.players.length === 2);
   t('A voit l emoji de B', same(find(la.players, b.id).avatar, EMO_B));
-  t('au salon : uniquement les champs publics', la.players.every((p) => same(Object.keys(p).sort(), ['avatar', 'host', 'id', 'name'])));
+  t('au salon : uniquement les champs publics', la.players.every((p) => same(Object.keys(p).sort(), ['avatar', 'host', 'id', 'name', 'skin'])));
 
   // ═══ 2. une partie courte à deux : la PP suit partout
   a.send({ action: 'start', vies: 1 });

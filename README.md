@@ -78,7 +78,8 @@ sont ceux de `presence.js`, commun aux serveurs du portfolio.
 
 | Client → serveur | |
 |---|---|
-| `join` | `{ name, avatar, code? }` — sans `code`, on crée la room et on en devient l'hôte |
+| `join` | `{ name, avatar, code?, skin? }` — sans `code`, on crée la room et on en devient l'hôte |
+| `skin` | `{ skin }` — changer de skin d'arme, **au salon seulement** ; ignoré en silence sinon (voir plus bas) |
 | `start` | hôte : `{ rythme?, vies? }` — depuis le salon, ou la fin (revanche) |
 | `lobby` | hôte, en fin de partie : retour au salon (les nouveaux peuvent entrer) |
 | `submit` | `{ turnId, text }` — le mot du joueur visé |
@@ -87,8 +88,9 @@ sont ceux de `presence.js`, commun aux serveurs du portfolio.
 | Serveur → client | |
 |---|---|
 | `you` | `{ id, code, host }` |
-| `lobby` | `{ code, phase, max, players: [{ id, name, avatar, host }] }` |
-| `countdown` | `{ order, rythme, vies, seconds, players }` — l'ordre fixe, et l'identité (nom, avatar) de chacun, **une fois** |
+| `lobby` | `{ code, phase, max, players: [{ id, name, avatar, skin, host }] }` |
+| `skin` | `{ id, skin }` — un joueur a changé de skin au salon (à toute la room, lui compris) |
+| `countdown` | `{ order, rythme, vies, seconds, players }` — l'ordre fixe, et l'identité (nom, avatar, skin) de chacun, **une fois** |
 | `turn` | `{ turnId, holder, prompt, players }` — qui est visé ; `players` = l'état seul (`id, lives, out, left, rank, words`) |
 | `typing` | `{ id, turnId, text }` — à tous sauf l'auteur, 30 caractères au plus |
 | `accepted` | `{ id, word, prompt }` — `word` sous sa forme du dictionnaire (« été ») |
@@ -103,6 +105,17 @@ accents, espace, apostrophes et trait d'union passent, coupés à 30. Seul le
 joueur visé, pour le `turnId` courant. Débit : 10 mots, 20 saisies, 60 messages
 par seconde et par connexion. Trame de plus de 64 Ko : connexion fermée.
 
+**Skin d'arme** (cosmétique, aucun effet sur la partie) : un id FERMÉ par
+joueur, `SKINS` dans `server.js` — aujourd'hui `roquette` (défaut) et
+`petoire`. Un id s'y ajoute AVANT que le front sache le dessiner. Dans `join`,
+un skin absent, inconnu ou mal formé devient `roquette` (jamais de refus) ;
+seul l'id nettoyé est relayé, jamais la valeur reçue. L'action `skin` n'est
+prise qu'au salon : hors salon, avant le join, id invalide ou identique, ou
+au-delà de 4 changements par seconde, rien ne part (ni erreur, ni diffusion).
+Le roster fige les skins au `countdown` pour toute la partie (revanche
+comprise) ; `turn`, `boom`, `end`… n'en portent pas. Un ancien client (sans
+`skin`) joue en `roquette` et ignore les champs et messages qu'il ne connaît pas.
+
 ## Tests
 
     npm test
@@ -115,6 +128,7 @@ par seconde et par connexion. Trame de plus de 64 Ko : connexion fermée.
 | `test-16.js` | 16 clients : lancement, ordre, rotation complète, 15 éliminations, classement 1 → 16 |
 | `test-depart.js` | départs : inactif, visé, pendant une pause, éliminé, plusieurs, plus assez, plus personne, hôte, onglet gelé en partie |
 | `test-avatar.js`, `test-avatar-ws.js` | la photo de profil (`avatar.js`, commun aux serveurs) |
+| `test-skin.js` | le skin d'arme : join (absent, inconnu, mal formé, forgé), changement au salon, identique, invalide, hors salon, débit 4/s, entrée tardive, countdown, roster figé, revanche, ancien client, aucune valeur forgée sur le fil |
 | `test-presence.js` | la présence (`presence.js`, commun aux serveurs) |
 
 Les tests WebSocket raccourcissent les délais par `TEST_PLANCHER_MS`,
