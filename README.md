@@ -107,7 +107,7 @@ par seconde et par connexion. Trame de plus de 64 Ko : connexion fermée.
 
 **Skin d'arme** (cosmétique, aucun effet sur la partie) : un id FERMÉ par
 joueur, `SKINS` dans `server.js` — aujourd'hui `roquette` (défaut),
-`petoire` et `marmite`. Un id s'y ajoute AVANT que le front sache le dessiner. Dans `join`,
+`petoire`, `marmite` et `huntsman`. Un id s'y ajoute AVANT que le front sache le dessiner. Dans `join`,
 un skin absent, inconnu ou mal formé devient `roquette` (jamais de refus) ;
 seul l'id nettoyé est relayé, jamais la valeur reçue. L'action `skin` n'est
 prise qu'au salon : hors salon, avant le join, id invalide ou identique, ou

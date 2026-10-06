@@ -4,7 +4,7 @@
 //
 //   node test-skin.js      (le serveur est démarré dans ce même processus)
 //
-// Le contrat : un id FERMÉ par joueur (`roquette` par défaut, `petoire`, `marmite`), dans
+// Le contrat : un id FERMÉ par joueur (`roquette` par défaut, `petoire`, `marmite`, `huntsman`), dans
 // `join`, dans les joueurs de `lobby` et de `countdown`, et l'action `skin` au
 // salon seulement, relayée en { type: 'skin', id, skin }. Tout le reste —
 // absent, invalide, identique, hors salon, débit dépassé — ne produit RIEN :
@@ -85,11 +85,11 @@ function bot(c) {
   O.motsPour('ion');                   // indexe le dictionnaire AVANT la partie (sinon le bot rate son tour)
 
   // ═══ 0. le contrat lui-même
-  t('liste fermée : roquette, petoire et marmite, rien d autre ; défaut roquette',
-    same([...SKINS].sort(), ['marmite', 'petoire', 'roquette']) && SKIN_DEFAULT === 'roquette');
-  t('cleanSkin : petoire et marmite passent, tout le reste devient roquette',
-    cleanSkin('petoire') === 'petoire' && cleanSkin('marmite') === 'marmite' && cleanSkin('roquette') === 'roquette'
-    && [undefined, null, 42, {}, ['petoire'], 'disrupteur', 'Marmite', ' marmite', 'Petoire', ' petoire', SVG, ENORME].every((v) => cleanSkin(v) === 'roquette'));
+  t('liste fermée : roquette, petoire, marmite et huntsman, rien d autre ; défaut roquette',
+    same([...SKINS].sort(), ['huntsman', 'marmite', 'petoire', 'roquette']) && SKIN_DEFAULT === 'roquette');
+  t('cleanSkin : petoire, marmite et huntsman passent, tout le reste devient roquette',
+    cleanSkin('petoire') === 'petoire' && cleanSkin('marmite') === 'marmite' && cleanSkin('huntsman') === 'huntsman' && cleanSkin('roquette') === 'roquette'
+    && [undefined, null, 42, {}, ['petoire'], 'disrupteur', 'Marmite', ' marmite', 'Huntsman', 'huntsman ', 'Petoire', ' petoire', SVG, ENORME].every((v) => cleanSkin(v) === 'roquette'));
 
   // ═══ 1. le join : chaque cas crée sa propre room
   const CAS = [
@@ -97,6 +97,7 @@ function bot(c) {
     ['join avec petoire → petoire', { skin: 'petoire' }, 'petoire'],
     ['join avec roquette → roquette', { skin: 'roquette' }, 'roquette'],
     ['join avec marmite → marmite', { skin: 'marmite' }, 'marmite'],
+    ['join avec huntsman → huntsman', { skin: 'huntsman' }, 'huntsman'],
     ['join avec un id inconnu (disrupteur, pas encore ouvert) → roquette', { skin: 'disrupteur' }, 'roquette'],
     ['join avec une autre casse (Petoire) → roquette', { skin: 'Petoire' }, 'roquette'],
     ['join avec des espaces autour ( petoire ) → roquette', { skin: ' petoire ' }, 'roquette'],
@@ -153,6 +154,12 @@ function bot(c) {
   recus = await apres(table, b, [{ action: 'skin', skin: 'petoire' }]);
   t('… et retour à petoire', recus.every((l) => l.length === 1 && l[0].skin === 'petoire') && etat(b).skin === 'petoire');
   await new Promise((r) => setTimeout(r, 1100));   // sort de la fenêtre de débit (4 par seconde) avant la suite
+  recus = await apres(table, b, [{ action: 'skin', skin: 'huntsman' }]);
+  t('changement vers huntsman : relayé chez les trois, état à huntsman',
+    recus.every((l) => l.length === 1 && same(l[0], { type: 'skin', id: b.id, skin: 'huntsman' })) && etat(b).skin === 'huntsman', JSON.stringify(recus));
+  recus = await apres(table, b, [{ action: 'skin', skin: 'petoire' }]);
+  t('… et retour à petoire (après huntsman)', recus.every((l) => l.length === 1 && l[0].skin === 'petoire') && etat(b).skin === 'petoire');
+  await new Promise((r) => setTimeout(r, 1100));   // de nouveau hors de la fenêtre de débit
 
   recus = await apres(table, b, [{ action: 'skin', skin: 'petoire' }]);
   t('changement identique : aucune diffusion', rien(recus), JSON.stringify(recus));

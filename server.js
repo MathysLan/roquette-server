@@ -34,7 +34,7 @@ const AVATAR_DEFAUT = '🙂';
 // dessine ; le serveur ne fait que filtrer et relayer l'id — jamais la valeur
 // reçue. Absent, invalide ou mal formé : le défaut, sans jamais refuser un join.
 // Un id s'ajoute ici AVANT que le front sache le dessiner (serveur d'abord).
-const SKINS = new Set(['roquette', 'petoire', 'marmite']);
+const SKINS = new Set(['roquette', 'petoire', 'marmite', 'huntsman']);
 const SKIN_DEFAULT = 'roquette';
 function cleanSkin(value) {
   return typeof value === 'string' && SKINS.has(value)
